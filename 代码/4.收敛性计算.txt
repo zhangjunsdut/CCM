@@ -1,0 +1,66 @@
+import skccm.data as data
+import skccm as ccm
+from skccm.utilities import train_test_split
+import  numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import csv
+df = pd.read_csv('F:\\青海地震\\指标\\各项指标统计1.csv',encoding='gb18030')
+# 筛选指定内容
+x1=df['信息源规模'].values
+x2=df['D(m)'].values
+
+print("x1",type(x1))
+print("x2",len(x2))
+
+# rx1 = 3.72 #determines chaotic behavior of the x1 series
+# rx2 = 3.72 #determines chaotic behavior of the x2 series
+# b12 = 0.2 #Influence of x1 on x2
+# b21 = 0.01 #Influence of x2 on x1
+# ts_length = 1000
+# x1,x2 = data.coupled_logistic(rx1,rx2,b12,b21,ts_length)
+# print("x1",type(x1))
+#print("x2",x2)
+
+
+lag = 1
+embed = 3
+e1 = ccm.Embed(x1)
+e2 = ccm.Embed(x2)
+X1 = e1.embed_vectors_1d(lag,embed)
+X2 = e2.embed_vectors_1d(lag,embed)
+#print("X1",X1)
+
+
+
+#split the embedded time series
+x1tr, x1te, x2tr, x2te = train_test_split(X1,X2, percent=.75)
+print("x1tr",x1tr)
+
+CCM = ccm.CCM() #initiate the class
+
+#library lengths to test
+len_tr = len(x1tr)
+print("len_tr",len_tr)
+lib_lens = np.arange(10, len_tr, len_tr/20, dtype='int')
+print("lib_lens",len(lib_lens))
+
+#test causation
+CCM.fit(x1tr,x2tr)
+x1p, x2p = CCM.predict(x1te, x2te,lib_lengths=lib_lens)
+
+sc1,sc2 = CCM.score()
+print(sc1)
+print(sc2)
+
+
+static_caustion=open("F:\\青海地震\\指标\\互为因果\\IS与D(m).csv",'w', newline='')
+write=csv.writer(static_caustion)
+biaotou=[["步长"]+["IS对D(m)的交叉相关性β"]+["D(m)对IS的交叉相关性β"]]
+write.writerows(biaotou)
+time_n=[0,4,8,12,16,20,24,28,32,36,40,44,48,52,56]
+for i in range(0,15):
+    t=[time_n[i]];k_ρ=[sc1[i]];complex_ρ=[sc2[i]]
+    temp_line=[t+k_ρ+complex_ρ]
+    write.writerows(temp_line)
+static_caustion.close()

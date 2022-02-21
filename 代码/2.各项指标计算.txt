@@ -1,0 +1,568 @@
+import networkx as net
+import csv
+import re
+import pandas as pd
+import numpy as np
+import glob
+import time
+##整个代码包括了K、DM、DA、信息源规模、简单传播规模、复杂传播规模六个模块
+
+#构建整个网络
+def create_g(path, gg):  # 定义一个路径函数
+    dataset=pd.read_csv(path, header=None,keep_default_na=False,encoding='gb18030',low_memory=False)
+    #print(dataset)
+    long_dataset = len(dataset)
+    #print(long_dataset)
+    for i in range(1, long_dataset):
+        row = dataset.iloc[i].values.tolist()
+        #print("user_shijianchuo",user_shijianchuo)
+        #print("yes")
+        #print("row",row)
+        user_id=str(row[2]);#print("user_id",user_id)
+        retweet_id=row[13];#print("retweet_id",retweet_id)
+        if '\t' in user_id:
+            #print("not in")
+            user_id=user_id.replace('\t', '')
+        else:
+            #print("in ")
+            user_id=user_id
+        if user_id not in gg.nodes and retweet_id=='\t':
+            #print("第一类")
+            gg.add_node(user_id, user_name=row[3], content=row[4], location=row[6],transmit_number=str(row[8]),
+            comment_number=str(row[9]),likenum_int=str(row[10]),retweet_time=row[11],tool=row[12])
+            #print("type(gg.nodes[user_id]['comment_number'])",type(gg.nodes[user_id]['comment_number']))
+        elif user_id not in gg.nodes and retweet_id !='\t':
+            #print("第二类")
+            gg.add_node(user_id, user_name=row[3], content=row[4], location=row[6], transmit_number=str(row[8]),
+                        comment_number=str(row[9]), likenum_int=str(row[10]), retweet_time=row[11], tool=row[12])
+            #print("type(gg.nodes[user_id]['comment_number'])", type(gg.nodes[user_id]['comment_number']))
+            retweet_time=str(row[11])
+            line1=dataset[0]
+            #print("line1",line1)
+            count=0
+            for z in line1:
+                #print("z",z)
+                #print("count", count)
+                if z==retweet_id:
+                    #print("yes")
+                    row = dataset.iloc[count].values.tolist()
+                    #print("row",row)
+                    retweet_user_id=row[2].replace('\t', '')
+                    if retweet_user_id not in gg.nodes():
+                        gg.add_node(retweet_user_id, user_name=row[3], content=row[4], location=row[6],
+                            transmit_number=row[8], comment_number=row[9],
+                            likenum_int=row[10], retweet_time=row[11], tool=row[12])
+                        #print("type(gg.nodes[retweet_user_id]['comment_number'])", type(gg.nodes[retweet_user_id]['comment_number']))
+                        gg.add_edge(retweet_user_id,user_id,time=retweet_time)
+                        #print(gg.edges([retweet_user_id,user_id]))
+                    else:
+                        gg.add_edge(retweet_user_id,user_id,time=retweet_time)
+                        #print(gg.edges([retweet_user_id, user_id]))
+
+                    break
+                count = count + 1
+        elif user_id in gg.nodes and retweet_id == '\t':
+            #print("第3类")
+            #print("type(gg.nodes[user_id]['comment_number'])", type(gg.nodes[user_id]['comment_number']))
+            gg.nodes[user_id]['content'] = gg.nodes[user_id]['content'] + "^" + row[4]
+            gg.nodes[user_id]['location'] = gg.nodes[user_id]['location'] + "^" + row[6]
+            gg.nodes[user_id]['transmit_number'] = str(gg.nodes[user_id]['transmit_number']) + "^" + str(row[8])
+            gg.nodes[user_id]['comment_number'] = str(gg.nodes[user_id]['comment_number']) + "^" + str(row[9])
+            gg.nodes[user_id]['likenum_int'] = str(gg.nodes[user_id]['likenum_int']) + "^" + str(row[10])
+            gg.nodes[user_id]['retweet_time'] = gg.nodes[user_id]['retweet_time'] + "^" + row[11]
+            gg.nodes[user_id]['tool'] = gg.nodes[user_id]['tool'] + "^" + row[12]
+        elif user_id  in gg.nodes and retweet_id != '\t':
+            #print("第四类")
+            #print("type(gg.nodes[user_id]['comment_number'])", type(gg.nodes[user_id]['comment_number']))
+            gg.nodes[user_id]['content'] = gg.nodes[user_id]['content'] + "^" + row[4]
+            gg.nodes[user_id]['location'] = gg.nodes[user_id]['location'] + "^" + row[6]
+            gg.nodes[user_id]['transmit_number'] = str(gg.nodes[user_id]['transmit_number']) + "^" + str(row[8])
+            gg.nodes[user_id]['comment_number'] = str(gg.nodes[user_id]['comment_number']) + "^" + str(row[9])
+            gg.nodes[user_id]['likenum_int'] = str(gg.nodes[user_id]['likenum_int'])+ "^" + str(row[10])
+            gg.nodes[user_id]['retweet_time'] = gg.nodes[user_id]['retweet_time'] + "^" + row[11]
+            gg.nodes[user_id]['tool'] = gg.nodes[user_id]['tool'] + "^" + row[12]
+            retweet_time=str(row[11])
+            line1 = dataset[0]
+            #print("line1", line1)
+            count = 0
+            for z in line1:
+                #print("z", z)
+                if z == retweet_id:
+                    #print("yes")
+                    row = dataset.iloc[count].values.tolist()
+                    #print("row", row)
+                    retweet_user_id = row[2].replace('\t', '')
+                    if retweet_user_id not in gg.nodes():
+                        gg.add_node(retweet_user_id, user_name=row[3], content=row[4], location=row[6],
+                            transmit_number=row[8], comment_number=row[9],
+                            likenum_int=row[10], retweet_time=row[11], tool=row[12])
+                        gg.add_edge(retweet_user_id,user_id,time=retweet_time)
+                        #print(gg.edges([retweet_user_id, user_id]))
+                    else:
+                        gg.add_edge(retweet_user_id,user_id,time=retweet_time)
+                        #print(gg.edges([retweet_user_id, user_id]))
+                    break
+                count = count + 1
+    return gg
+
+#构建时间切片网络
+def creat_time_cut_g(g,time_cut_gg):
+    for node in g.nodes():
+        list_time_node=[]
+        list_time_node=find_node_shijianchuo(node,g,list_time_node)
+        #print(list_time_node)
+        for node_shijianchuo in list_time_node:
+            if node_shijianchuo>start_shijianchuo and node_shijianchuo<end_shijianchuo:
+                time_cut_gg.add_node(node,user_name=g.nodes[node]['user_name'],content=g.nodes[node]['content'],
+                                    location=g.nodes[node]['location'],transmit_number=g.nodes[node]['transmit_number'],
+                                    comment_number=g.nodes[node]['comment_number'],likenum_int=g.nodes[node]['likenum_int'],
+                                    retweet_time=g.nodes[node]['retweet_time'],tool=g.nodes[node]['tool'])
+                node_father_list=[]
+                node_father_list=find_father(g,node_father_list,node)
+                if len(node_father_list)!=0:
+                    for father_node in node_father_list:
+                        time_cut_gg.add_node(father_node,user_name=g.nodes[father_node]['user_name'],content=g.nodes[father_node]['content'],
+                                    location=g.nodes[father_node]['location'],transmit_number=g.nodes[father_node]['transmit_number'],
+                                    comment_number=g.nodes[father_node]['comment_number'],likenum_int=g.nodes[father_node]['likenum_int'],
+                                    retweet_time=g.nodes[father_node]['retweet_time'],tool=g.nodes[father_node]['tool'])
+                        time_cut_gg.add_edge(father_node,node)
+                node_son_list=[]
+                node_son_list = find_son(g, node_son_list, node)
+                if len(node_son_list) != 0:
+                    for son_node in node_son_list:
+                        time_cut_gg.add_node(son_node, user_name=g.nodes[son_node]['user_name'],content=g.nodes[son_node]['content'],
+                                        location=g.nodes[son_node]['location'],transmit_number=g.nodes[son_node]['transmit_number'],
+                                        comment_number=g.nodes[son_node]['comment_number'],likenum_int=g.nodes[son_node]['likenum_int'],
+                                        retweet_time=g.nodes[son_node]['retweet_time'],tool=g.nodes[son_node]['tool'])
+                        time_cut_gg.add_edge(node, son_node)
+                break
+    return time_cut_gg
+
+#找一个节点的父节点集合
+def find_father(g,store_father_list,one_node):#找一个节点的父节点集合
+    pred_node_set_address = g.predecessors(one_node)
+    for e in pred_node_set_address:
+        store_father_list.append(e)
+    return store_father_list
+
+#寻找一个节点的子节点集合
+def find_son(g,store_son_list,one_node):#寻找一个节点的子节点集合
+    after_node_set_address = g.successors(one_node)
+    for e in after_node_set_address:
+        store_son_list.append(e)
+    return store_son_list
+
+#找出u节点全部的时间序列并转化为时间戳
+def find_node_shijianchuo(node,g,store_u_shijianchuo_list):#找出u节点全部的时间序列并转化为时间戳
+    origin_time_u = g.nodes[node]['retweet_time']  # 取出该节点的时间序列
+    #print("origin_time_u", origin_time_u)
+    new_time_u = origin_time_u.split('^')  # 对时间序列进行分割
+    long_time_u = len(new_time_u)
+    #print("long_time_u", long_time_u)
+    for i in range(0, long_time_u):
+        if len(str(new_time_u[i])) != 0:  # 长度不为0，说明该时间序列不为空
+            e_time_u = time.mktime(time.strptime(str(new_time_u[i]), '%Y-%m-%d  %H:%M'))  # 把每一个时间序列转化为时间戳
+            store_u_shijianchuo_list.append(e_time_u)
+    return store_u_shijianchuo_list
+
+#找出父节点全部的时间序列并转化为时间戳
+def find_father_shijianchuo(node,g,store_father_shijianchuo_list):
+    origin_time_father = g.nodes[node]['retweet_time']  # 取出该节点的时间序列
+    #print("origin_time_father", origin_time_father)
+    new_time_father = origin_time_father.split('^')  # 对时间序列进行分割
+    long_time_father = len(new_time_father)
+    #print("long_time_father", long_time_father)
+    for i in range(0, long_time_father):
+        if len(str(new_time_father[i])) != 0:  # 长度不为0，说明该时间序列不为空
+            e_time_father = time.mktime(time.strptime(str(new_time_father[i]), '%Y-%m-%d  %H:%M'))  # 把每一个时间序列转化为时间戳
+            store_father_shijianchuo_list.append(e_time_father)
+    return store_father_shijianchuo_list
+
+#找出m个任意节点放入列表中
+def find_m_node(without_lone_node_list,number,store_m_list,g,threshold_time):
+    #找出m个任意节点放入列表中
+    #print("threshould_time", threshold_time)
+    count=0
+    for node_m in without_lone_node_list:
+        if count<number:
+            origin_time_node_m = g.nodes[node_m]['retweet_time']
+            new_time_node_m = origin_time_node_m.split('^')
+            long_time_node_m = len(new_time_node_m)
+            if long_time_node_m == 1:  # 如果时间序列只有1个，那该时间序列就是该节点的时间戳
+                # print("str(new_time_q[0]",str(new_time_q[0]))
+                min_node_m_shijianchuo = time.mktime(time.strptime(str(new_time_node_m[0]), '%Y-%m-%d  %H:%M'))
+                if min_node_m_shijianchuo>=threshold_time:
+                    store_m_list.append(node_m)
+                    count = count + 1
+            if long_time_node_m>1:#如果时间序列有多个，那该最小的时间序列就是该节点的时间戳
+                temp_store_list=[]
+                for e in range(0,long_time_node_m):
+                    #print("str(new_time_q[e]", str(new_time_q[e]))
+                    e_time_e = time.mktime(time.strptime(str(new_time_node_m[e]), '%Y-%m-%d  %H:%M'))
+                    if e_time_e>=threshold_time:
+                        temp_store_list.append(e_time_e)
+                if len(temp_store_list)!=0:
+                    store_m_list.append(node_m)
+                    count = count + 1
+    return store_m_list
+
+#找出m个节点的时间戳
+def find_m_node_shijianchuo(g,store_m_lst,store_m_list_shijianchuo,threshold_time):#找出m个节点的时间戳
+    for q in store_m_lst:
+        #print("q",q)
+        origin_time_q = g.nodes[q]['retweet_time']
+        #print("origin_time_q",origin_time_q)
+        new_time_q = origin_time_q.split('^')
+        long_time_q = len(new_time_q)
+        #print("long_time_q",long_time_q)
+        if long_time_q ==1:#如果时间序列只有1个，那该时间序列就是该节点的时间戳
+            #print("str(new_time_q[0]",str(new_time_q[0]))
+            e_time_q = time.mktime(time.strptime(str(new_time_q[0]), '%Y-%m-%d  %H:%M'))
+            store_m_list_shijianchuo.append(e_time_q)
+        if long_time_q>1:#如果时间序列有多个，那该最小的时间序列就是该节点的时间戳
+            temp_store_list = []
+            for e in range(0, long_time_q):
+                # print("str(new_time_q[e]", str(new_time_q[e]))
+                e_time_e = time.mktime(time.strptime(str(new_time_q[e]), '%Y-%m-%d  %H:%M'))
+                if e_time_e >= threshold_time:
+                    temp_store_list.append(e_time_e)
+            min_shijianchuo_q=min(temp_store_list)
+            store_m_list_shijianchuo.append(min_shijianchuo_q)
+    return store_m_list_shijianchuo
+
+#存放网络中全部节点时间戳的列表
+def find_shijianchuo(list_node):#存放网络中全部节点时间戳的列表
+    for w in list_node:
+        origin_time_w = g.nodes[w]['retweet_time']
+        new_time_w = origin_time_w.split('^')
+        long_time_w = len(new_time_w)
+        if long_time_w ==1:
+            e_time_w = time.mktime(time.strptime(str(new_time_w[0]), '%Y-%m-%d  %H:%M'))
+            all_node_shijianchuo.append(e_time_w)
+        if long_time_w>1:
+            e_time_w = time.mktime(time.strptime(str(new_time_w[0]), '%Y-%m-%d  %H:%M'))
+            min_time=e_time_w
+            for e in range(1,long_time_w):
+                e_time_e = time.mktime(time.strptime(str(new_time_w[e]), '%Y-%m-%d  %H:%M'))
+                if e_time_e-min_time<0:
+                    min_time=e_time_e
+            all_node_shijianchuo.append(min_time)
+    return all_node_shijianchuo
+
+#去重操作
+def duplicate(target_list,new_list):#去重操作
+    for i in target_list:
+        if i not in new_list:
+            new_list.append(i)
+    return new_list
+
+#生成整个网络
+path_file_name_number = glob.glob('F:\\白银越野赛\\清洗后数据\\白银越野赛*.csv')
+long = len(path_file_name_number) + 1
+#print(long)
+g=net.DiGraph()#生成一个有向图
+for r in range(1,long):
+    graph_name="F:\\白银越野赛\\清洗后数据\\白银越野赛"+str(r)+".csv"
+    g=create_g(graph_name,g)
+print("all_network",g.number_of_nodes())
+print("all_network",g.number_of_edges())
+
+store_k_D_DA = []
+
+start_time = '2021-05-23 00:00'
+end_time = '2021-05-23 12:00'
+fin_time='2021-06-18 00:00'
+start_shijianchuo = time.mktime(time.strptime(start_time, '%Y-%m-%d %H:%M'))
+end_shijianchuo = time.mktime(time.strptime(end_time, '%Y-%m-%d %H:%M'))
+fin_shijianchuo=time.mktime(time.strptime(fin_time, '%Y-%m-%d %H:%M'))
+print("start_shijianchuo", start_shijianchuo)
+print("end_shijianchuo", end_shijianchuo)
+triggering_condation=False
+count_while=1
+while triggering_condation==False:
+    #构建时间切片网络
+    time_cut_g=net.DiGraph()
+    time_cut_g=creat_time_cut_g(g,time_cut_g)
+    print("cut_network",time_cut_g.number_of_nodes())
+    print("cut_network",time_cut_g.number_of_edges())
+    # node_file_name = "G:\\王学金\\王学金实验\\新吴鹤臣数据\\传播网络\\切片传播网络\\节点"+str(count_while)+".csv"
+    # edge_file_name = "G:\\王学金\\王学金实验\\新吴鹤臣数据\\传播网络\\切片传播网络\\边"+str(count_while)+".csv"
+    # csv_node_file = open(node_file_name, 'w', encoding='gb18030', newline='')  # 创建一个csv表格
+    # csv_edge_file = open(edge_file_name, 'w', newline='')  # 创建一个csv表格
+    # writer_node = csv.writer(csv_node_file)
+    # writer_edge = csv.writer(csv_edge_file)
+    # biaotou = ["user_id"] + ["用户昵称"] + ["微博正文"] + ["发布位置"] + ["转发数"] + ["评论数"] + ["点赞数"] + ["发布时间"] + ["发布工具"]
+    # end_biaotou = [biaotou]
+    # writer_node.writerows(end_biaotou)
+    # print(g.number_of_edges())
+    # for u in time_cut_g.nodes:
+    #     # print("u",u)
+    #     list_u = [u];
+    #     list_user_name = [time_cut_g.nodes[u]['user_name']];
+    #     list_content = [time_cut_g.nodes[u]['content']]
+    #     list_lation = [time_cut_g.nodes[u]['location']];
+    #     list_transmit_number = [time_cut_g.nodes[u]['transmit_number']]
+    #     list_comment_number = [time_cut_g.nodes[u]['comment_number']];
+    #     list_likenum_int = [time_cut_g.nodes[u]['likenum_int']]
+    #     list_retweet_time = [time_cut_g.nodes[u]['retweet_time']];
+    #     list_tool = [time_cut_g.nodes[u]['tool']]
+    #     temp_node = list_u + list_user_name + list_content + list_lation + list_transmit_number + list_comment_number + list_likenum_int + list_retweet_time + list_tool
+    #     data_node = [temp_node]
+    #     # print(data_node)
+    #     writer_node.writerows(data_node)
+    # csv_node_file.close()
+    # biaotou = ["node1"] + ["node2"] + ["time"]
+    # end_biaotou = [biaotou]
+    # writer_edge.writerows(end_biaotou)
+    # for e in time_cut_g.edges:
+    #     list_edge_1 = [e[0]]
+    #     list_edge_2 = [e[1]]
+    #     temp_edge = list_edge_1 + list_edge_2
+    #     data_edge = [temp_edge]
+    #     # print(data_edge)
+    #     writer_edge.writerows(data_edge)
+    # csv_edge_file.close()
+
+    #K强度模块的代码
+    lone_node_list=[];number0=[];number1=[];number2=[];number3=[];number4=[];number5=[];number6=[];number7=[];number8=[]
+    number9=[];number10=[]#存放满足不同k强度节点的列表
+    max_k=[]
+    count1=0#累积总人数
+    all_node=[]
+    all_node_shijianchuo=[]
+    for u in time_cut_g.nodes():
+        father_list=[]
+        father_list=find_father(time_cut_g,father_list,u)#寻找父节点集合
+        #print("father_list",father_list)
+        son_list=[]
+        son_list=find_son(time_cut_g,son_list,u) #寻找子节点集合
+        #print("son_list",son_list)
+        if len(father_list)!=0 or len(son_list)!=0:#证明该节点不是孤立节点
+            all_node.append(u)
+            #print("u", u)
+            #print("father_list",father_list)
+            #print("son_list",son_list)
+            list_u_shijianchuo=[]
+            list_u_shijianchuo=find_node_shijianchuo(u,time_cut_g,list_u_shijianchuo)
+            count1=count1+len(list_u_shijianchuo)
+            #print("list_u_shijianchuo",list_u_shijianchuo)
+            for u_shijianchuo in list_u_shijianchuo:
+                if len(father_list)!= 0:
+                    count = 0
+                    for father_node in father_list:
+                        list_father_shijianchuo =[]
+                        list_father_shijianchuo=find_father_shijianchuo(father_node,time_cut_g,list_father_shijianchuo)
+                        for father_shijianchuo in list_father_shijianchuo:
+                            diff=u_shijianchuo-father_shijianchuo
+                            if diff>0:
+                                count=count+1
+                                break
+                    if count==0:#根据该节点已转发的父节点的数量，将该节点放入对应k强度的列表中
+                        number0.append(u)
+                        if 0 not in max_k:
+                            max_k.append(0)
+                    if count==1:
+                        number1.append(u)
+                        if 1 not in max_k:
+                            max_k.append(1)
+                    if count==2:
+                        number2.append(u)
+                        if 2 not in max_k:
+                            max_k.append(2)
+                    if count==3:
+                        number3.append(u)
+                        if 3 not in max_k:
+                            max_k.append(3)
+                    if count==4:
+                        number4.append(u)
+                        if 4 not in max_k:
+                            max_k.append(4)
+                    if count==5:
+                        number5.append(u)
+                        if 5 not in max_k:
+                            max_k.append(5)
+                    if count==6:
+                        number6.append(u)
+                        if 6 not in max_k:
+                            max_k.append(6)
+                    if count==7:
+                        number7.append(u)
+                        if 7 not in max_k:
+                            max_k.append(7)
+                    if count==8:
+                        number8.append(u)
+                        if 8 not in max_k:
+                            max_k.append(8)
+                    if count==9:
+                        number9.append(u)
+                        if 9 not in max_k:
+                            max_k.append(9)
+                    if count==10:
+                        number10.append(u)
+                        if 10 not in max_k:
+                            max_k.append(10)
+                else:
+                    number0.append(u)
+                    if 0 not in max_k:
+                        max_k.append(0)
+        else:
+            lone_node_list.append(u)
+
+    if len(max_k)!=0:
+        fin_k=max(max_k)
+        print("fin_k",fin_k)
+    else:
+        fin_k=0
+        print("fin_k",fin_k)
+
+    #DM模块的代码
+    no_lone_node_list=[]#存放非孤立节点的列表
+    store_Dm_list = []#存放每半小时的D(m)
+    set_time_shijianchuo=start_shijianchuo
+    for u in time_cut_g.nodes():
+        father_list=[]
+        father_list=find_father(time_cut_g,father_list,u)#寻找父节点集合
+        #print("father_list",father_list)
+        son_list=[]
+        son_list=find_son(time_cut_g,son_list,u) #寻找子节点集合
+        #print("son_list",son_list)
+        if len(father_list)!=0 or len(son_list)!=0:#证明该节点不是孤立节点
+            no_lone_node_list.append(u)
+    if len(no_lone_node_list)!=0:
+        #print(len(no_lone_node_list))
+        count_list=[5,10,15]
+        # print("set_time_shijianchuo",set_time_shijianchuo)
+        Dm_condition=False
+        while Dm_condition==False:
+            store_ratio = []
+            for m in count_list:
+                final_list=[]#前m个节点的存放列表
+                final_list=find_m_node(no_lone_node_list,m,final_list,time_cut_g,set_time_shijianchuo)
+                #print("final_list1",final_list)
+                final_list_shijianchuo = []  # 前m个节点的时间戳存放列表
+                final_list_shijianchuo=find_m_node_shijianchuo(time_cut_g,final_list,final_list_shijianchuo,set_time_shijianchuo)
+                #print("final_list_shijianchuo",final_list_shijianchuo)
+                for r in no_lone_node_list:  # 对m个节点的列表进行更新，找出最先转发m个节点
+                    if r not in final_list:
+                        origin_time_r = time_cut_g.nodes[r]['retweet_time']
+                        new_time_r = origin_time_r.split('^')
+                        long_time_r = len(new_time_r)
+                        if long_time_r == 1:
+                            e_time_r = time.mktime(time.strptime(str(new_time_r[0]), '%Y-%m-%d %H:%M'))
+                            if e_time_r>=set_time_shijianchuo:
+                                min_time_r = e_time_r
+                                max_new_shijianchuo = max(final_list_shijianchuo)  # 找出存放m个时间戳列表中最大的那个时间戳
+                                if min_time_r - max_new_shijianchuo < 0:  # 如果遍历到的节点时间戳比存放m个时间戳列表中最大的时间戳还要小
+                                    max_lation = final_list_shijianchuo.index(max_new_shijianchuo)  # 找到存放m个时间戳列表中最大的时间戳的位置
+                                    final_list_shijianchuo[max_lation] = min_time_r  # 对存放m个时间戳列表进行更新
+                                    final_list[max_lation] = r  # 对存放m个节点的列表进行更新
+                        if long_time_r > 1:
+                            temp_store_list = []
+                            for e in range(0, long_time_r):
+                                # print("str(new_time_q[e]", str(new_time_q[e]))
+                                e_time_e = time.mktime(time.strptime(str(new_time_r[e]), '%Y-%m-%d  %H:%M'))
+                                if e_time_e >=set_time_shijianchuo:
+                                    temp_store_list.append(e_time_e)
+                            if len(temp_store_list)!=0:
+                                min_time_r=min(temp_store_list)
+                                max_new_shijianchuo = max(final_list_shijianchuo)
+                                if min_time_r - max_new_shijianchuo < 0:
+                                    max_lation = final_list_shijianchuo.index(max_new_shijianchuo)
+                                    final_list_shijianchuo[max_lation] = min_time_r
+                                    final_list[max_lation] = r
+                #print("final_list2",final_list)
+                #print("final_list_shijianchuo2",final_list_shijianchuo)
+
+                #print(final_list)
+                #print(final_list_shijianchuo)
+                #lation=final_list_shijianchuo.index(max(final_list_shijianchuo))
+                #print(max(final_list_shijianchuo))
+                #print(final_list[lation])
+                count_edge = 0
+                for l in final_list:  # 找出m个节点之间实际存在的连边
+                    for k in final_list:
+                        if l != k and net.has_path(time_cut_g, l, k):
+                            #print(l,k)
+                            count_edge = count_edge + 1
+                #print("count_edge", count_edge)
+                tie_ratio = count_edge / (m * (m - 1))
+                #print("tie_ratio", tie_ratio)
+                store_ratio.append(tie_ratio)
+            average_ratio=(float(store_ratio[0])+float(store_ratio[1])+float(store_ratio[2]))/3
+            store_Dm_list.append(average_ratio)
+            set_time_shijianchuo=set_time_shijianchuo+600
+            if set_time_shijianchuo>=end_shijianchuo:
+                Dm_condition=True
+    else:
+        average_ratio=0
+        store_Dm_list.append(average_ratio)
+    print("store_dm",store_Dm_list)
+    max_average_ratio=max(store_Dm_list)
+    print("max_average_ratio",max_average_ratio)
+
+
+    #DA模块的代码
+    all_node_shijianchuo=find_shijianchuo(all_node)
+    #lone_node_shijianchuo=find_shijianchuo(lone_node_list)
+    #print(len(all_node))
+    #print(len(all_node_shijianchuo))
+    new_number0=[]
+    new_number0=duplicate(number0,new_number0)
+    start_node_time=[]
+    all_node_time=[]
+    # for  p in lone_node_shijianchuo:
+    #     if p >= start_shijianchuo and p < end_shijianchuo:
+    #         all_node_time.append(p)
+    #         start_node_time.append(p)
+    for i in new_number0:
+        #print(i)
+        i_lation = all_node.index(i)
+        #print(i_lation)
+        i_shijianchuo=all_node_shijianchuo[i_lation]
+        if i_shijianchuo >= start_shijianchuo and i_shijianchuo< end_shijianchuo:
+            start_node_time.append(i)
+    for t in all_node:
+        t_lation=all_node.index(t)
+        #print(t_lation)
+        t_shijianchuo=all_node_shijianchuo[t_lation]
+        if t_shijianchuo >= start_shijianchuo and t_shijianchuo< end_shijianchuo:
+            all_node_time.append(t)
+    if len(all_node_time)!=0:
+        da_ratio=len(start_node_time)/len(all_node_time)
+        print("da_ratio",da_ratio)
+    else:
+        da_ratio=0
+        print("da_ratio",da_ratio)
+
+    #信息源规模、简单传播规模、复杂传播规模的代码
+    Information_sources = len(number0)
+    simple_com=len(number1)
+    complex_com=len(number2)+len(number3)+len(number4)+len(number5)+len(number6)+len(number7)+len(number8)+len(number9)+len(number10)
+    print("simple_com",simple_com)
+    print("complex_com",complex_com)
+    write_time = start_shijianchuo
+    yuanzu_line = time.localtime(write_time)
+    time_write_line = time.strftime("%Y-%m-%d  %H:%M", yuanzu_line)
+    start_shijianchuo=end_shijianchuo
+    end_shijianchuo=end_shijianchuo+43200
+    if end_shijianchuo>=fin_shijianchuo:
+        triggering_condation=True
+    count_while=count_while+1
+    print("count_while",count_while)
+
+    store_k_D_DA.append([time_write_line,fin_k,max_average_ratio,da_ratio,Information_sources,simple_com,complex_com])
+
+#各项统计指标的csv输出
+print(store_k_D_DA)
+fin_filename="F:\\白银越野赛\\指标\\各项指标统计1.csv"
+fin_file = open(fin_filename, 'w', newline='')  # 创建一个csv表格
+writer = csv.writer(fin_file)
+biaotou = ["时间"] + ["k的最大值"] + ["D(m)"] +  ["DA"]  +["信息源规模"]+ ["简单传播人数"] + ["复杂传播人数"]
+end_biaotou = [biaotou]
+writer.writerows(end_biaotou)
+for line in store_k_D_DA:
+    time=[line[0]];max_k=[line[1]];d_m=[line[2]];d_a=[line[3]];Information_sources_scale=[line[4]];number_simple=[line[5]];number_complex=[line[6]]
+    temp_line=time+max_k+d_m+d_a+Information_sources_scale+number_simple+number_complex
+    data_line = [temp_line]
+    writer.writerows(data_line)
+fin_file.close()

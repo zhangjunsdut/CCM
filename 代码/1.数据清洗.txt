@@ -1,0 +1,56 @@
+import networkx as net
+import csv
+import re
+import pandas as pd
+import numpy as np
+import glob
+path_file_name_number = glob.glob('F:\\白银越野赛\\清洗前数据\\白银越野赛*.csv')
+long = len(path_file_name_number) + 1
+print(long)
+for z in range(1,long):
+    file_name="F:\\白银越野赛\\清洗前数据\\白银越野赛"+str(z)+".csv"
+    df=pd.read_csv(file_name, header=None,keep_default_na=False)
+    print(df)
+    long_df=len(df)
+    print(long_df)
+    res_list=[]
+    for i in range(1,long_df):
+        row = df.iloc[i].values.tolist()
+        #print(row)
+        if row not in res_list:
+            #print("yes")
+            res_list.append(row)
+    temp_list=[]
+    for i in res_list:
+        id=[str(i[0])+'\t'];bid=[str(i[1])];user_id=[str(i[2])+'\t'];user_name=[str(i[3])];content=[str(i[4])]
+        head_article=[str(i[5])];location=[str(i[6])];at_user=[str(i[7])];
+        transmit_number=[str(i[9])];comment_number=[str(i[10])]; likenum_int=[str(i[11])]
+        retweet_time=[str(i[12])];tool=[str(i[13])];retweet_id=[str(i[16])+'\t']
+        #print(type(row[0]))
+        fin_line=id+bid+user_id+user_name+content+head_article+location+at_user+transmit_number+comment_number+likenum_int+retweet_time+tool+retweet_id
+        temp_list.append(fin_line)
+    #print(temp_list)
+    fin_name= "F:\\白银越野赛\\清洗后数据\\白银越野赛"+str(z)+".csv"
+    csv_file=open(fin_name, 'w', encoding='gb18030',newline='')  # 创建一个csv表格
+    #csv_file=pd.read_csv(fin_name, header=None, keep_default_na=False)
+    writer = csv.writer(csv_file)
+    biaotou = ["id"] + ["bid"]+["user_id"]+["用户昵称"]+["微博正文"]+["头条文章url"]+["发布位置"]+["艾特用户"]+["转发数"]+["评论数"]+["点赞数"]+["发布时间"]+["发布工具"]+["retweet_id"]
+    end_biaotou = [biaotou]
+    writer.writerows(end_biaotou)
+    for o in temp_list:
+        #print(o)
+        id = [(o[0])];bid = [o[1]];user_id = [o[2]];user_name = [o[3]]; content = [o[4]]
+        head_article = [o[5]];location = [o[6]];at_user = [o[7]];
+        transmit_number = [o[8]];comment_number = [o[9]];likenum_int = [o[10]]
+        retweet_time = [o[11]];tool = [o[12]];retweet_id = [o[13]]
+        fin_line = [id+bid+user_id+user_name+content+head_article+location+at_user+transmit_number+comment_number+likenum_int+retweet_time+tool+retweet_id]
+        writer.writerows(fin_line)
+    csv_file.close()
+
+
+
+
+
+
+
+

@@ -1,0 +1,18 @@
+library(multispatialCCM)
+setwd("F:\\青海地震\\指标")
+all_data=read.table("各项指标统计1.csv",sep=",",header=T)
+a=all_data[["信息源规模"]]
+b=all_data[["Dm"]]
+maxE <- 5          # 最大嵌入维度（此设定下会从2至5中选择最优嵌入维度）
+tau <- 1           # 时间滞后tau
+Emat <- matrix(nrow = maxE - 1, ncol = 2)
+colnames(Emat) <- c("a", "b")
+for (i in 2:maxE){
+    Emat[i-1, "a"] <- SSR_pred_boot(A=a, E=i, predstep=1, tau=tau)$rho
+    Emat[i-1, "b"] <- SSR_pred_boot(A=b, E=i, predstep=1, tau=tau)$rho
+  }
+
+E_x <- which.max(Emat[,"a"]) + 1
+E_y <- which.max(Emat[,"b"]) + 1
+print(E_x)
+print(E_y)
